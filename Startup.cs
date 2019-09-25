@@ -33,7 +33,6 @@ namespace efcore_tenancy
         {
             services.AddControllers();
             services.AddScoped<TenantInfo>();
-            services.TryAddSingleton<IHttpContextAccessor, HttpContextAccessor>();
             
             // Uncomment whatever approach you'd like to test
             // services.UseDiscriminatorColumn(Configuration);

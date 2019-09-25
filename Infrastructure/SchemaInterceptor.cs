@@ -7,16 +7,17 @@ namespace efcore_tenancy.Infrastructure
 {
     public class SchemaInterceptor : DbCommandInterceptor
     {
-        private readonly ITenantInfoProvider tenantInfoProvider;
-        public SchemaInterceptor(ITenantInfoProvider tenantInfoProvider)
+        private readonly TenantInfo tenantInfo;
+        public SchemaInterceptor(TenantInfo tenantInfo)
         {
-            this.tenantInfoProvider=tenantInfoProvider;
+            this.tenantInfo = tenantInfo;
         }
 
-        public override Task<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        public override Task<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, 
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result, 
+            CancellationToken cancellationToken = default)
         {
-            var tenantInfo = tenantInfoProvider.GetTenantInfo();
-
             command.CommandText = $"USE TenantPerSchemaDb {command.CommandText}";
             command.CommandText = command.CommandText
                 .Replace("FROM ", $" FROM {tenantInfo.Name}.")

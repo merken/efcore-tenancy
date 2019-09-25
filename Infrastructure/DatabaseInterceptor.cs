@@ -7,16 +7,17 @@ namespace efcore_tenancy.Infrastructure
 {
     public class DatabaseInterceptor : DbCommandInterceptor
     {
-        private readonly ITenantInfoProvider tenantInfoProvider;
-        public DatabaseInterceptor(ITenantInfoProvider tenantInfoProvider)
+        private readonly TenantInfo tenantInfo;
+        public DatabaseInterceptor(TenantInfo tenantInfo)
         {
-            this.tenantInfoProvider = tenantInfoProvider;
+            this.tenantInfo = tenantInfo;
         }
 
-        public override Task<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        public override Task<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, 
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
         {
-            var tenantInfo = tenantInfoProvider.GetTenantInfo();
-
             command.CommandText = $"USE {tenantInfo.Name}DB {command.CommandText}";
 
             return base.ReaderExecutingAsync(command, eventData, result);

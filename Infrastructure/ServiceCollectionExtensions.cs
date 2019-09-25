@@ -1,49 +1,51 @@
-using System.Data.Common;
-using System.Threading;
-using System.Threading.Tasks;
 using efcore_tenancy.Data;
-using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace efcore_tenancy.Infrastructure
 {
     public static class ServiceCollectionExtensions
     {
         public static IServiceCollection UseDiscriminatorColumn(this IServiceCollection services, IConfiguration configuration)
-        {
-            var efServices = GetEfServices();
-            efServices.AddScoped<IInterceptor, DiscriminatorColumnInterceptor>();
-
-            return services.RegisterProductsDbContext(efServices,configuration);
-        }
+         => services.UseEFInterceptor<DiscriminatorColumnInterceptor>(configuration);
 
         public static IServiceCollection UseSchemaPerTenant(this IServiceCollection services, IConfiguration configuration)
-        {
-            var efServices = GetEfServices();
-            efServices.AddScoped<IInterceptor, SchemaInterceptor>();
-
-            return services.RegisterProductsDbContext(efServices,configuration);
-        }
+         => services.UseEFInterceptor<SchemaInterceptor>(configuration);
 
         public static IServiceCollection UseDatabasePerTenant(this IServiceCollection services, IConfiguration configuration)
+         => services.UseEFInterceptor<DatabaseInterceptor>(configuration);
+        
+        private static IServiceCollection UseEFInterceptor<T>(this IServiceCollection services, IConfiguration configuration)
+            where T : class, IInterceptor
         {
-            var efServices = GetEfServices();
-            efServices.AddScoped<IInterceptor, DatabaseInterceptor>();
+            return services
+                .AddScoped<DbContextOptions>((serviceProvider) =>
+                    {
+                        var tenant = serviceProvider.GetRequiredService<TenantInfo>();
 
-            return services.RegisterProductsDbContext(efServices,configuration);
+                        var efServices = new ServiceCollection();
+                        efServices.AddEntityFrameworkSqlServer();
+                        efServices.AddScoped<TenantInfo>(s => 
+                            serviceProvider.GetRequiredService<TenantInfo>()); // Allows DI for tenant info, set by parent pipeline via middleware
+                        efServices.AddScoped<IInterceptor, T>(); // Adds the interceptor
+
+                        var connectionString = configuration.GetConnectionString("SqlServerConnection");
+
+                        return new DbContextOptionsBuilder<ProductsDbContext>()
+                            .UseInternalServiceProvider(efServices.BuildServiceProvider())
+                            .UseSqlServer(connectionString)
+                            .Options;
+                    })
+                .AddScoped<ProductsDbContext>(s => new ProductsDbContext(s.GetRequiredService<DbContextOptions>()));
         }
 
         public static IServiceCollection UseConnectionPerTenant(this IServiceCollection services, IConfiguration configuration)
         {
-            services.AddScoped<ITenantInfoProvider, TenantInfoProvider>();
-
             services.AddScoped<ProductsDbContext>((serviceProvider) =>
             {
-                var tenant = serviceProvider.GetRequiredService<ITenantInfoProvider>().GetTenantInfo();
+                var tenant = serviceProvider.GetRequiredService<TenantInfo>(); // Get from parent service provider (ASP.NET MVC Pipeline)
                 var connectionString = configuration.GetConnectionString(tenant.Name);
                 var options = new DbContextOptionsBuilder<ProductsDbContext>()
                     .UseSqlServer(connectionString)
@@ -52,31 +54,6 @@ namespace efcore_tenancy.Infrastructure
                 return context;
             });
 
-            return services;
-        }
-
-        private static ServiceCollection GetEfServices()
-        {
-            var efServices = new ServiceCollection();
-
-            efServices.AddEntityFrameworkSqlServer();
-            efServices.TryAddSingleton<IHttpContextAccessor, HttpContextAccessor>();
-            efServices.AddScoped<ITenantInfoProvider, TenantInfoProvider>();
-
-            return efServices;
-        }
-
-        private static IServiceCollection RegisterProductsDbContext(this IServiceCollection services, ServiceCollection efServices, IConfiguration configuration)
-        {
-            var efServiceProvider = efServices.BuildServiceProvider();
-            var connectionString = configuration.GetConnectionString("SqlServerConnection");
-            var dbContextOptions = new DbContextOptionsBuilder<ProductsDbContext>()
-                .UseInternalServiceProvider(efServiceProvider)
-                .UseSqlServer(connectionString)
-                .Options;
-
-            services.AddScoped<ProductsDbContext>((services) =>
-                new ProductsDbContext(dbContextOptions));
             return services;
         }
     }
