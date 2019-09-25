@@ -32,7 +32,7 @@ namespace efcore_tenancy
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
-            services.AddScoped<TenantInfo>();
+            services.AddScoped<TenantInfo>(); // Adds a scoped tenant object, controlled via middleware (TenantInfoMiddleware)
             
             // Uncomment whatever approach you'd like to test
             // services.UseDiscriminatorColumn(Configuration);
