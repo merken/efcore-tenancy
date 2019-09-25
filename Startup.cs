@@ -34,24 +34,12 @@ namespace efcore_tenancy
             services.AddControllers();
             services.AddScoped<TenantInfo>();
             services.TryAddSingleton<IHttpContextAccessor, HttpContextAccessor>();
-
-            var efServices = new ServiceCollection();
-            efServices.AddEntityFrameworkSqlServer();
-            efServices.TryAddSingleton<IHttpContextAccessor, HttpContextAccessor>();
-            efServices.AddScoped<ITenantInfoProvider, TenantInfoProvider>();
-            // efServices.AddScoped<IInterceptor, DiscriminatorColumnInterceptor>();
-            // efServices.AddScoped<IInterceptor, DatabaseInterceptor>();
-            efServices.AddScoped<IInterceptor, SchemaInterceptor>();
-
-            var efServiceProvider = efServices.BuildServiceProvider();
-            var connectionString = Configuration.GetConnectionString("SqlServerConnection");
-            var dbContextOptions = new DbContextOptionsBuilder<ProductsDbContext>()
-                .UseInternalServiceProvider(efServiceProvider)
-                .UseSqlServer(connectionString)
-                .Options;
-
-            services.AddScoped<ProductsDbContext>((services) =>
-                new ProductsDbContext(dbContextOptions));
+            
+            // Uncomment whatever approach you'd like to test
+            // services.UseDiscriminatorColumn(Configuration);
+            // services.UseSchemaPerTenant(Configuration);
+            // services.UseDatabasePerTenant(Configuration);
+            // services.UseConnectionPerTenant(Configuration);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
