@@ -33,5 +33,21 @@ namespace efcore_tenancy.Infrastructure
 
             return base.ReaderExecutingAsync(command, eventData, result);
         }
+        
+        public override InterceptionResult<DbDataReader> ReaderExecuting(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result)
+        {
+           command.CommandText = $"USE DiscriminatorDB {command.CommandText}";
+
+            if (command.CommandText.Contains("WHERE"))
+            {
+                command.CommandText += $" AND Tenant = '{tenantInfo.Name}'";
+            }
+            else
+            {
+                command.CommandText += $" WHERE Tenant = '{tenantInfo.Name}'";
+            }
+
+            return base.ReaderExecuting(command, eventData, result);
+        }
     }
 }
