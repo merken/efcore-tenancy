@@ -31,7 +31,7 @@ namespace efcore_tenancy.Infrastructure
                 command.CommandText += $" WHERE Tenant = '{tenantInfo.Name}'";
             }
 
-            return base.ReaderExecutingAsync(command, eventData, result);
+            return base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
         }
     }
 }
